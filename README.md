@@ -19,13 +19,13 @@ The UI follows The Maker Collective 2026 palette — Navy `#00007b` as the main 
 node server.mjs            # http://localhost:3000
 ```
 
-| URL | What |
-|---|---|
-| `/` | Visitor landing (event video, Arabic/English, **Vote** or **Results / Analysis**) |
-| `/analysis` | Public Results / Analysis page — live, no login, follows the *Results screen* setting |
-| `/results` | Live TV results screen (full-screen it on a 16:9 TV; also works as a laptop preview). States follow the real data: **waiting** (no votes yet — finalists only, no ranks), **Live voting** (leader spotlight, race bars, QR “Scan to vote”), **Final results** (winners revealed category by category, ties shown as joint winners). Add `?vote=https://your-public-link` to point the QR somewhere other than this server. |
-| `/admin` | Organizer login (see roles below) |
-| `/api/health` | Health check (JSON: status, db, uptime) — used by Docker and load balancers |
+| URL           | What                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`           | Visitor landing (event video, Arabic/English, **Vote** or **Results / Analysis**)                                                                                                                                                                                                                                                                                                                                          |
+| `/analysis`   | Public Results / Analysis page — live, no login, follows the _Results screen_ setting                                                                                                                                                                                                                                                                                                                                      |
+| `/results`    | Live TV results screen (full-screen it on a 16:9 TV; also works as a laptop preview). States follow the real data: **waiting** (no votes yet — finalists only, no ranks), **Live voting** (leader spotlight, race bars, QR “Scan to vote”), **Final results** (winners revealed category by category, ties shown as joint winners). Add `?vote=https://your-public-link` to point the QR somewhere other than this server. |
+| `/admin`      | Organizer login (see roles below)                                                                                                                                                                                                                                                                                                                                                                                          |
+| `/api/health` | Health check (JSON: status, db, uptime) — used by Docker and load balancers                                                                                                                                                                                                                                                                                                                                                |
 
 In demo mode the SMS code is **printed in the server console** (`[DEV OTP] +962…: 123456`). A demo event with 3 categories and 12 exhibitors is created automatically. Tests: `npm test`.
 
@@ -40,26 +40,26 @@ In demo mode the SMS code is **printed in the server console** (`[DEV OTP] +962�
 
 ## Roles & access (Admin → Team access)
 
-| Capability | Super Admin | Admin |
-|---|:-:|:-:|
-| View dashboard, results, live screen | ✅ | ✅ |
-| Add / edit / delete exhibitors (teams) and categories, upload photos | ✅ | ✅ |
-| View visitors list, export results CSV | ✅ | ✅ |
-| Open / close voting | ✅ | ❌ |
-| Reset all votes | ✅ | ❌ |
-| Settings (event name, results mode, geofence, IP rules) | ✅ | ❌ |
-| Manage team access (create / change / remove admins) | ✅ | ❌ |
+| Capability                                                           | Super Admin | Admin |
+| -------------------------------------------------------------------- | :---------: | :---: |
+| View dashboard, results, live screen                                 |     ✅      |  ✅   |
+| Add / edit / delete exhibitors (teams) and categories, upload photos |     ✅      |  ✅   |
+| View visitors list, export results CSV                               |     ✅      |  ✅   |
+| Open / close voting                                                  |     ✅      |  ❌   |
+| Reset all votes                                                      |     ✅      |  ❌   |
+| Settings (event name, results mode, geofence, IP rules)              |     ✅      |  ❌   |
+| Manage team access (create / change / remove admins)                 |     ✅      |  ❌   |
 
-**Viewer Admin was removed.** Anyone who only needs to *see* results now uses the public **Results / Analysis** page (`/analysis`, also reachable from the landing card) — no account needed. It shows totals, voters, the leader and ranking per category, vote shares, the most active category and the closest race, updating live. It follows **Settings → Results screen**: *Hidden* reveals nothing, *Ranking only* hides all numbers, *Ranking + vote count* shows everything. It never shows visitor names or phone numbers. Existing Viewer Admin accounts are deleted automatically when the server starts.
+**Viewer Admin was removed.** Anyone who only needs to _see_ results now uses the public **Results / Analysis** page (`/analysis`, also reachable from the landing card) — no account needed. It shows totals, voters, the leader and ranking per category, vote shares, the most active category and the closest race, updating live. It follows **Settings → Results screen**: _Hidden_ reveals nothing, _Ranking only_ hides all numbers, _Ranking + vote count_ shows everything. It never shows visitor names or phone numbers. Existing Viewer Admin accounts are deleted automatically when the server starts.
 
 Enforced on the server for every `/api/admin/*` route (role is re-read from the database on each request, so a role change or removal takes effect immediately): `401` = not signed in, `403` = signed in but role not allowed (message names the role and the action). The UI also hides what a role can't use. The matrix lives in one place (`PERM` in `server.mjs`) if you want to tighten it. The last Super Admin can't be demoted or deleted.
 
 **Test accounts (development only — created when `NODE_ENV` is not `production`):**
 
-| User | Password | Role |
-|---|---|---|
-| `admin` | `admin1234` | Super Admin |
-| `manager` | `manager1234` | Admin |
+| User      | Password      | Role        |
+| --------- | ------------- | ----------- |
+| `admin`   | `admin1234`   | Super Admin |
+| `manager` | `manager1234` | Admin       |
 
 In production only `ADMIN_USER` / `ADMIN_PASSWORD` is created (as Super Admin); add the others from **Team access**. Existing databases are migrated automatically — admins created before roles existed become Super Admin; Viewer Admin accounts are removed.
 
@@ -83,6 +83,7 @@ In production only `ADMIN_USER` / `ADMIN_PASSWORD` is created (as Super Admin); 
 Event name · results mode (Hidden / Ranking only / Ranking + counts) · geofence (lat/lng/radius) · venue IP ranges (CIDR). All stored in the database.
 
 **Who can vote (venue check).** Three optional methods; when any are switched on, passing **any one** is enough:
+
 - **Venue network** — the phone's IP is inside the venue ranges.
 - **Location** — the phone's GPS is inside the radius (gives a 2-hour location pass).
 - **Rotating venue QR** — the live screen (`/results`) shows a QR that changes every 15 seconds. Each code is `HMAC(secret, time-slot)` (nothing stored), accepted for about 15–30 seconds, then exchanged for a signed 1-hour venue pass (`QR_PASS_MS`, slot length `QR_SLOT_MS`). The code is only sent to a screen whose browser is **signed in to the dashboard** — a public copy of `/results` shows a plain link and a hint for organizers. A screenshot sent to someone elsewhere expires before it is useful; every voter still needs their own phone number and SMS code.
@@ -115,4 +116,10 @@ See [DEPLOYMENT.md](DEPLOYMENT.md). Short version: `cp .env.example .env`, edit,
 - [ ] Venue public IP added to Allowed IP ranges and IP restriction switched on
 - [ ] Load test on the real hardware (1,000 phones on one Wi-Fi)
 - [ ] `/data` volume backed up (see DEPLOYMENT.md); restore tested
-- [ ] Dry run: full flow with 10 real phones, then **Reset all votes** before the event
+- [ ] # Dry run: full flow with 10 real phones, then **Reset all votes** before the event
+
+# MC2026
+
+Maker Collective 2026 Digital Voting System - 42 Amman Hackathon Project
+
+> > > > > > > 0e64b81f033906d04da2cfd657baa285d322707c
